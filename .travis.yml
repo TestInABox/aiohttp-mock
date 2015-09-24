@@ -1,0 +1,6 @@
+language: python
+python:
+  - 3.4
+install: pip install -r tools/test-requirements.txt -r tools/requirements.txt
+script:
+    - nosetests --with-coverage --cover-package=aiohttp_mock tests
