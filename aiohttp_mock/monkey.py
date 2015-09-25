@@ -1,36 +1,31 @@
+from aiohttp_mock.exceptions import *
 import aiohttp
 
-def interceptor(*args):
-    '''Interceptor function for the aiohttp.connector.BaseConnector.connect
 
-    This function will intercept connections and redirect to the Transport/Protocol of its choosing.
+def send_interceptor(*args):
+    '''Interceptor for aiohttp.client_reqrep.ClientRequest.send()
     '''
-    print('Running interceptor')
-    request = None
-    for arg in args:
-        if isinstance(arg, aiohttp.client_reqrep.ClientRequest):
-            request = arg
-            print('Found request')
-            break
-
     import aiohttp_mock.manager
-    if request is not None:
-        mocker = aiohttp_mock.manager.ConnectionManager.instance
-        if mocker is not None:
-            print('Interceptor present')
-            if mocker.is_managed(request.url):
-                print('Managed URL!')
-                # TODO: make our own Connection object that gets returned here
+    mocker = aiohttp_mock.manager.ConnectionManager.instance
+    if mocker is not None:
+        if mocker.is_managed(args[0].url):
+            try:
+                return mocker.intercept(args[0])
+            except ConnectionManagerUnhandled:
+                print('ConnectionManager not configured.')
+                pass
 
-    else:
-        print('Bad Request!')
+    return aiohttp_mock.manager.ConnectionManager.aiohttp_clientreq_send(*args)
 
-    return aiohttp_mock.manager.ConnectionManager.aiohttp_base_connect(*args)
 
 def patch():
     import aiohttp_mock.manager
-    if getattr(aiohttp.connector.BaseConnector, 'connect') != interceptor:
-        setattr(aiohttp_mock.manager.ConnectionManager, 'aiohttp_base_connect', getattr(aiohttp.connector.BaseConnector, 'connect'))
-    setattr(aiohttp.connector.BaseConnector, 'connect', interceptor)
 
+    patches = [
+        (aiohttp.client_reqrep.ClientRequest, 'send', aiohttp_mock.manager.ConnectionManager, 'aiohttp_clientreq_send', send_interceptor)
+    ]
 
+    for source, source_attr, dest, dest_attr, handler in patches:
+        if getattr(source, source_attr) != handler:
+            setattr(dest, dest_attr, getattr(source, source_attr))
+        setattr(source, source_attr, handler)
