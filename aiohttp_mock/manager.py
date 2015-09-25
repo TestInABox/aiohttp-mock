@@ -1,12 +1,19 @@
 from aiohttp_mock.exceptions import *
 from aiohttp_mock.router import ConnectionRouter
 from aiohttp.client_reqrep import ClientResponse
+from aiohttp.multidict import (
+    CIMultiDictProxy, MultiDictProxy, MultiDict,
+    CIMultiDict
+)
 
 
 class ConnectionManager(object):
 
     instance = None
     aiohttp_clientreq_send = None
+
+    status_reason_map = {
+    }
 
     @staticmethod
     def get_instance():
@@ -39,8 +46,22 @@ class ConnectionManager(object):
             return False
 
     @staticmethod
-    def make_response(uri, method, body):
+    def get_reason_for_status(status_code):
+        if status_code in ConnectionManager.status_reason_map:
+            return ConnectionManager.status_reason_map[status_code]
+        else:
+            return 'Unknown'
+
+    @staticmethod
+    def make_response(uri, method, status_code=200, body=None, add_headers=None):
         response = ClientResponse(method, uri, host='aiohttp_mock')
+        response.status = status_code
+        response.reason = ConnectionManager.get_reason_for_status(status_code)
+        response._should_code = False
+        response._headers = CIMultiDictProxy({
+            'x-agent': 'aiohttp-mock',
+            'content-length': len(body) if body is not None else 0
+        })
         return response
         
     def register(self, uri, method, response):

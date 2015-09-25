@@ -5,6 +5,7 @@ from aiohttp.multidict import (
     CIMultiDict
 )
 
+
 class ConnectionRouterHandler(object):
 
     def __init__(self, uri):
