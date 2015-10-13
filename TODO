@@ -1,0 +1,8 @@
+TODO for aiohttp-mock
+
+- Add unit tests
+- Add examples
+- Add sphinx documentation
+- ensure 100% test coverage
+- Register with ReadTheDocs, TravisCI, Coveralls
+- Add IRC and mailing list
