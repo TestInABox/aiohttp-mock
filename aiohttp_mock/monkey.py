@@ -23,10 +23,14 @@ def send_interceptor(*args):
     # Access the aiohttp-mock framework
     # if the URI is managed by it then pass it off to the framework
     import aiohttp_mock.manager
-    mocker = aiohttp_mock.manager.ConnectionManager.instance
+    mocker = aiohttp_mock.manager.ConnectionManager.get_instance()
+    print('send_interceptor() - Found Mocker - id {0}'.format(id(mocker)))
     if mocker is not None:
+        print('send_interceptor() - Checking URL: {0}'.format(args[0].url))
         if mocker.is_managed(args[0].url):
+            print('send_interceptor() - URI is managed')
             try:
+                print('send_interceptor() - Attempting to intercept URI')
                 return mocker.intercept(args[0])
             except ConnectionManagerUnhandled:
                 print('ConnectionManager not configured.')

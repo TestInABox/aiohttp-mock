@@ -64,6 +64,7 @@ class ConnectionRouterHandler(object):
             response.status = 405
             response.reason = 'Method Not Supported'
             response._should_close = False
+            response._closed = True
             response._headers = cidict({
                 'x-agent': 'aiohttp-mock',
                 'content-length': 0
@@ -79,6 +80,7 @@ class ConnectionRouter(object):
     def reset(self):
         """Reset all the routes
         """
+        print('ConnectionRouter.reset() - self - {0}'.format(id(self)))
         self._routes = {}
 
     def add_route(self, uri):
@@ -86,8 +88,13 @@ class ConnectionRouter(object):
 
         :param uri: string - URI to be handled
         """
+        print('ConnectionRouter.add_route() - self - {0}'.format(id(self)))
+        print('ConnectionRouter.add_route() - uri - {0}'.format(uri))
         if uri not in self._routes:
+            print('ConnectionRouter.add_route() - adding route')
             self._routes[uri] = ConnectionRouterHandler(uri)
+
+        print('ConnectionRouter.add_route() - router = {0}'.format(id(self._routes[uri])))
 
     def get_route(self, uri):
         """Access the handler for a URI
@@ -97,9 +104,12 @@ class ConnectionRouter(object):
         :returns: ConnectionRouterHandler instance managing the route
         :raises: RouteNotHandled if the route is not handled
         """
+        print('ConnectionRouter.get_route() - self - {0}'.format(id(self)))
         if uri in self._routes:
+            print('ConnectionRouter.get_route() - router = {0}'.format(id(self._routes[uri])))
             return self._routes[uri]
         else:
+            print('ConnectionRouter.get_route() - no router')
             raise RouteNotHandled('{0} not handled'.format(uri))
 
     def add_route_handler(self, uri, method, handler):
@@ -109,12 +119,18 @@ class ConnectionRouter(object):
         :param method: string - HTTP Verb the handler is for
         :param handle: ClientResponse or callable that will handle the request
         """
+        print('ConnectionRouter.add_route_handler() - self - {0}'.format(id(self)))
         try:
             router = self.get_route(uri)
+
         except RouteNotHandled:
             self.add_route(uri)
             router = self.get_route(uri)
 
+        print('ConnectionRouter.add_route_handler() - router = {0}'.format(id(router)))
+        print('ConnectionRouter.add_route_handler() - uri - {0}'.format(uri))
+        print('ConnectionRouter.add_route_handler() - method - {0}'.format(method))
+        print('ConnectionRouter.add_route_handler() - handler - {0}'.format(id(handler)))
         router.add_method_handler(method, handler)
 
     def handle(self, method, uri, request):
@@ -128,6 +144,11 @@ class ConnectionRouter(object):
         :returns: aiohttp.client_reqrep.ClientResponse instance
         :raises: RouteNotHandled if the route is not handled
         """
+        print('ConnectionRouter.handle() - self - {0}'.format(id(self)))
+        print('ConnectionRouter.handle() - uri - {0}'.format(uri))
+        print('ConnectionRouter.handle() - method - {0}'.format(method))
+        print('ConnectionRouter.handle() - request - {0}'.format(id(request)))
         router = self.get_route(uri)
+        print('ConnectionRouter.handle() - router = {0}'.format(id(router)))
 
         return router.handle(method, request)

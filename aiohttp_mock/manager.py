@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 from aiohttp_mock.exceptions import *
 from aiohttp_mock.router import ConnectionRouter
 from aiohttp.client_reqrep import ClientResponse
@@ -122,22 +123,27 @@ class ConnectionManager(object):
 
         :returns: instance of ConnectionManager
         """
+        print('ConnectionManager.get_instance() - entering - id = {0}'.format(id(ConnectionManager.instance)))
         if ConnectionManager.instance is None:
             return ConnectionManager()
 
-        else:
-            return ConnectionManager.instance
+        print('ConnectionManager.get_instance() - returning - id = {0}'.format(id(ConnectionManager.instance)))
+        return ConnectionManager.instance
 
     def __init__(self):
         self.managed_urls = []
         self.router = ConnectionRouter()
         self.globify()
 
+    def __del__(self):
+        self.reset()
+
     def reset(self):
         """Reset Manager State
 
         Clear the known route supports
         """
+        print('ConnectionManager - Resettings - id {0}'.format(id(self)))
         self.deglobify()
         self.router.reset()
 
@@ -145,8 +151,10 @@ class ConnectionManager(object):
     def reset_global():
         """Reset the global variables
         """
+        print('ConnectionManager.reset_global() - entering - id = {0}'.format(id(ConnectionManager.instance)))
         if ConnectionManager.instance is not None:
             ConnectionManager.instance = None
+        print('ConnectionManager.reset_global() - exiting - id = {0}'.format(id(ConnectionManager.instance)))
 
     def deglobify(self):
         """De-register the global instance
@@ -155,8 +163,11 @@ class ConnectionManager(object):
         reset the global instance
         """
         # if this is the official instance, then clear it
+        print('ConnectionManager.deglobify() - self = {0}'.format(id(self)))
+        print('ConnectionManager.deglobify() - entering - global id = {0}'.format(id(ConnectionManager.instance)))
         if ConnectionManager.instance == self:
             ConnectionManager.instance = None
+        print('ConnectionManager.deglobify() - exiting - global id = {0}'.format(id(ConnectionManager.instance)))
 
     def globify(self, force=False):
         """Register the global instance
@@ -168,20 +179,33 @@ class ConnectionManager(object):
                                 the official one
         """
         # if this is the first instance, then make it the official one
+        print('ConnectionManager.globify() - self = {0}'.format(id(self)))
+        print('ConnectionManager.globify() - entering - global id = {0}'.format(id(ConnectionManager.instance)))
         if ConnectionManager.instance is None or force == True:
             ConnectionManager.instance = self
+        print('ConnectionManager.globify() - exiting - global id = {0}'.format(id(ConnectionManager.instance)))
 
-    def is_managed(self, url):
+    def is_managed(self, uri):
         """Checks if the specific URL is managed by the instance
 
-        :param url: string - URI of the route to check
+        :param uri: string - URI of the route to check
         :returns: boolean - True if the URL is managed, otherwise False
         """
+        print('ConnectionManager.is_managed() - self = {0}'.format(id(self)))
+        print('ConnectionManager.is_managed() - checking uri - {0}'.format(uri))
+        print('ConnectionManager.is_managed() - router - {0}'.format(id(self.router)))
+        if self.router is None:
+            print('ConnectionManager.is_managed() - no router')
+            return False
+
         try:
-            self.router.get_route(url)
+            print('ConnectionManager.is_managed() - checking route')
+            self.router.get_route(uri)
+            print('ConnectionManager.is_managed() - found route')
             return True
 
         except RouteNotHandled:
+            print('ConnectionManager.is_managed() - no route')
             return False
 
     @staticmethod
@@ -213,8 +237,13 @@ class ConnectionManager(object):
             content_length = len(body)
 
         response = ClientResponse(method, uri, host='aiohttp_mock')
+        response._post_init(loop=asyncio.get_event_loop())
+        response._continue = None
         response.status = status_code
         response.reason = ConnectionManager.get_reason_for_status(status_code)
+        response.content = body
+
+        response._closed = True
         response._should_code = False
         response._headers = cidict({
             'x-agent': 'aiohttp-mock',
@@ -237,7 +266,12 @@ class ConnectionManager(object):
             if not hasattr(response, '__call__'):
                 raise ConnectionManagerInvalidHandler
 
-        self.router.add_route_handler(method, uri, response)
+        print('ConnectionManager.register() - self = {0}'.format(id(self)))
+        print('ConnectionManager.register() - uri = {0}'.format(uri))
+        print('ConnectionManager.register() - method = {0}'.format(method))
+        print('ConnectionManager.register() - response = {0}'.format(id(response)))
+        self.router.add_route_handler(uri, method, response)
+        print('ConnectionManager.register() - route added')
 
     def intercept(self, request):
         """Request Intercept Handler
@@ -245,12 +279,15 @@ class ConnectionManager(object):
         :param request: aiohttp.client_reqrep.ClientRequest the request is for
         :returns: aiohttp.client_reqrep.ClientResponse
         """
-        print('Managed URL!')
+        print('ConnectionManager.intercept() - self = {0}'.format(id(self)))
+        print('ConnectionManager.intercept() - request = {0}'.format(id(request)))
 
         uri = request.url
         method = request.method
         try:
+            print('ConnectionManager.intercept() - attempting to route')
             return self.router.handle(method, uri, request)
 
         except RouteNotHandled:
+            print('ConnectionManager.intercept() - no route')
             raise ConnectionManagerUnhandled('no configured handler')
