@@ -16,10 +16,11 @@ def make_url_call(instance, response_code):
     instance.assertEqual(resp.status, response_code)
     return resp
 
-
-def make_future(loop, coroutine):
-    task = loop.create_task(coroutine)
-
+def make_async_call(loop, fn):
+    if hasattr(loop, 'create_task'):
+        return loop.create_task(fn)
+    else:
+        return asyncio.async(fn)
 
 
 class TestEssential(unittest.TestCase):
@@ -29,7 +30,7 @@ class TestEssential(unittest.TestCase):
         print('test_basic - Initial Check')
         loop = asyncio.get_event_loop()
         tasks = [
-            loop.create_task(make_url_call(self, 200))
+            make_async_call(loop, make_url_call(self, 200))
         ]
         loop.run_until_complete(asyncio.wait(tasks))
 
@@ -37,7 +38,7 @@ class TestEssential(unittest.TestCase):
         aiohttp_mock.monkey.patch()
 
         tasks = [
-            loop.create_task(make_url_call(self, 200))
+            make_async_call(loop, make_url_call(self, 200))
         ]
         loop.run_until_complete(asyncio.wait(tasks))
 
@@ -46,7 +47,7 @@ class TestEssential(unittest.TestCase):
         print('test_basic - id mocker: {0}'.format(id(interceptor)))
 
         tasks = [
-            loop.create_task(make_url_call(self, 200))
+            make_async_call(loop, make_url_call(self, 200))
         ]
         loop.run_until_complete(asyncio.wait(tasks))
 
@@ -57,7 +58,7 @@ class TestEssential(unittest.TestCase):
         print('test_basic - id mocker: {0}'.format(id(interceptor)))
 
         tasks = [
-            loop.create_task(make_url_call(self, 405))
+            make_async_call(loop, make_url_call(self, 405))
         ]
         loop.run_until_complete(asyncio.wait(tasks))
         loop.close()
