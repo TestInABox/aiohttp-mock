@@ -17,7 +17,7 @@ def make_url_call():
 
 class TestEssential(unittest.TestCase):
 
-    def test_basic():
+    def test_basic(self):
         asyncio.get_event_loop().run_until_complete(make_url_call())
 
         print('Monkey Patching')
